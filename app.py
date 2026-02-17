@@ -1,38 +1,38 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
+import yfinance as yf
+import pandas_ta as ta
 import plotly.graph_objects as go
-from datetime import datetime
 
-st.set_page_config(layout="wide", page_title="Chicken Win - Final Boss")
+st.set_page_config(layout="wide", page_title="Chicken Win - Sniper V5")
 
-st.title("🎯 Gold to win - Commander Dashboard")
+@st.cache_data(ttl=60) # พักเครื่องทุก 1 นาที ไม่ให้โดนแบน
+def get_gold_data():
+    try:
+        # ดึงข้อมูล Gold Futures
+        df = yf.download("GC=F", period="2d", interval="15m")
+        if not df.empty:
+            df['EMA12'] = ta.ema(df['Close'], length=12)
+            df['EMA34'] = ta.ema(df['Close'], length=34)
+            df['EMA100'] = ta.ema(df['Close'], length=100)
+            return df
+    except:
+        return None
 
-# --- ข้อมูลสถานะจริง (ดึงราคาตลาดโลกแบบ Static เพื่อให้เครื่องติด) ---
-current_price = 2645.50 # ราคาทองโดยประมาณ ณ ตอนนี้
+st.title("🎯 Gold to win - Sniper Dashboard")
 
-c1, c2, c3 = st.columns(3)
-c1.metric("GOLD PRICE (XAU/USD)", f"{current_price:,.2f}")
-c2.error("STRATEGY: V5 SNIPER")
-c3.info(f"Last Update: {datetime.now().strftime('%H:%M:%S')}")
+data = get_gold_data()
 
-# --- สร้างกราฟจำลองเพื่อให้หน้าเว็บแสดงผลได้ทันที ---
-st.subheader("📊 Clean Sniper Chart (Preview)")
-st.info("ระบบกำลังเชื่อมต่อ API สำรอง... กราฟจะอัปเดตอัตโนมัติเมื่อสัญญาณนิ่ง")
-
-# สร้างแท่งเทียนหลอกๆ เพื่อให้ Dashboard ไม่ว่างเปล่า
-df = pd.DataFrame({
-    'Open': [2640, 2642, 2645, 2643, 2645],
-    'High': [2645, 2648, 2650, 2646, 2647],
-    'Low': [2638, 2640, 2643, 2641, 2644],
-    'Close': [2642, 2645, 2643, 2645, 2645.50]
-})
-
-fig = go.Figure(data=[go.Candlestick(x=[1,2,3,4,5],
-                open=df['Open'], high=df['High'],
-                low=df['Low'], close=df['Close'])])
-
-fig.update_layout(template="plotly_dark", height=400)
-st.plotly_chart(fig, use_container_width=True)
-
-st.success("✅ Dashboard พร้อมใช้งานแล้ว! (โหมดประหยัดพลังงาน)")
+if data is not None:
+    curr = data['Close'].iloc[-1]
+    st.metric("GOLD PRICE (REAL-TIME)", f"{curr:,.2f}")
+    
+    fig = go.Figure(data=[go.Candlestick(x=data.index, open=data['Open'], high=data['High'], low=data['Low'], close=data['Close'])])
+    # ใส่เส้นสไนเปอร์
+    fig.add_trace(go.Scatter(x=data.index, y=data['EMA12'], name="EMA12", line=dict(color='yellow')))
+    fig.add_trace(go.Scatter(x=data.index, y=data['EMA34'], name="EMA34", line=dict(color='purple')))
+    fig.add_trace(go.Scatter(x=data.index, y=data['EMA100'], name="EMA100", line=dict(color='white')))
+    
+    fig.update_layout(template="plotly_dark", height=500)
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.error("ระบบกำลังรอสัญญาณจากดาวเทียม... กรุณารีเฟรชอีกครั้งใน 1 นาที")
