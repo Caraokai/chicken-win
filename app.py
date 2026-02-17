@@ -1,39 +1,32 @@
 import streamlit as st
+import yfinance as yf
+import plotly.graph_objects as go
+from datetime import datetime
 
-# --- ตั้งค่าหน้าเว็บ ---
-st.set_page_config(layout="wide", page_title="Gold to win - Chicken Edition")
+st.set_page_config(layout="wide", page_title="Gold to win - Realtime")
 
-# --- ส่วนที่ 1: แถบสถานะ (The Signal Bar) ---
-st.title("🎯 Gold to win - Commander Dashboard")
-col_stat1, col_stat2, col_stat3 = st.columns(3)
-with col_stat1:
-    st.error("MARKET STATUS: STRONG SELL")
-with col_stat2:
-    st.warning("DXY STATUS: BULLISH")
-with col_stat3:
-    st.info("VOLATILITY: HIGH")
+# --- ส่วนดึงข้อมูล Real-time ---
+@st.cache_data(ttl=60)
+def get_gold_data():
+    data = yf.download("GC=F", period="1d", interval="5m")
+    return data
 
-st.divider()
+df = get_gold_data()
+current_price = df['Close'].iloc[-1]
 
-# --- ส่วนที่ 2: กราฟและบทวิเคราะห์ (The Dashboard) ---
-col_left, col_right = st.columns([2, 1])
+# --- แถบสถานะด้านบน ---
+st.title("🎯 Gold to win - Realtime Dashboard")
+c1, c2, c3 = st.columns(3)
+c1.metric("GOLD PRICE (USD)", f"{current_price:,.2f}")
+c2.error("STRATEGY: V5 SNIPER")
+c3.warning("SIGNAL: WAITING")
 
-with col_left:
-    st.subheader("📊 Clean Sniper Chart")
-    st.write("(กราฟ Real-time กำลังถูกเชื่อมต่อในขั้นตอนถัดไป...)")
-    # จำลองหน้าจอกราฟที่คลีนที่สุด
-    st.image("https://via.placeholder.com/800x400.png?text=Your+Clean+Chart+Will+Appear+Here")
+# --- ส่วนกราฟ Plotly (ขยับได้ ซูมได้) ---
+fig = go.Figure(data=[go.Candlestick(x=df.index,
+                open=df['Open'], high=df['High'],
+                low=df['Low'], close=df['Close'])])
 
-with col_right:
-    st.subheader("🛡️ Decision Matrix")
-    st.table({
-        "ตัวบ่งชี้": ["Trend (1H)", "Momentum", "Volume"],
-        "สถานะ": ["⬇️ Down", "🔴 Bearish", "✅ Confirmed"]
-    })
-    
-    st.subheader("📍 Key Levels")
-    st.metric("Resistance (SL)", "4,945.00")
-    st.metric("Support (TP)", "4,911.00")
+fig.update_layout(title="XAU/USD - 5m Chart", template="plotly_dark", height=500)
+st.plotly_chart(fig, use_container_width=True)
 
-# --- ส่วนที่ 3: คำแนะนำจาก AI ---
-st.success("AI COMMAND: รักษาวินัย หากราคาไม่ทะลุ SL ให้ถือลุ้นไปที่เป้าหมายกำไร!")
+st.success(f"อัปเดตล่าสุดเมื่อ: {datetime.now().strftime('%H:%M:%S')}")
